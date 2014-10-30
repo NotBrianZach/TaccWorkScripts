@@ -3,6 +3,7 @@
 #DIR=/work/01891/adb/cem/results/tacc_video
 DIR=/home/zachabel/TaccWorkScripts/ok_video
 mkdir ${DIR}/graphs
+$GP_OUTPUT_FILE="tempGraphOutput.txt"
 
 function createGraph
 {
@@ -12,6 +13,11 @@ function createGraph
   outFile=$4
   xAxis=$5
   yAxis=$6
+  currFrame=$7
+  min=$8
+  max=$9
+  mean=$10
+  stdDev=$11
   GP_FILE=${graphFile}
   echo "#graph ${graphTitle}" > ${graphFile}
   #echo "set terminal postscript eps enhanced" >> ${GP_FILE}
@@ -50,10 +56,13 @@ function createGraph
   # echo "set yrange[0.007:100]" >> ${GP_FILE}
   echo "set grid lc rgb '#aaaaaa'" >> ${GP_FILE}
   echo "set pointsize 0.5" >> ${GP_FILE}
-  echo "set arrow from $7,50 to $7,0 linecolor rgb 'red'" >> ${GP_FILE}
+  
+#added by zach 
+  echo "set arrow from first $currFrame, graph 1 to first $currFrame, graph 0 linecolor rgb 'red'" >> ${GP_FILE}
+  echo "set label '$currFrame' at first $currFrame - 2, graph -.08 textcolor rgb 'red' " >> ${GP_FILE}
   echo ""
   echo -n "plot " >> ${GP_FILE}
-  echo -n "'${datFile}' with lines linetype 1 linecolor rgb '${colors[${counter}]}'" >> ${graphFile}
+  echo -n  "'${datFile}' with lines linetype 1 linecolor rgb '${colors[${counter}]}'" >> ${graphFile}
   
     #echo "set terminal postscript eps enhanced" >> ${GP_FILE}
   echo "set terminal svg" >> ${GP_FILE}
@@ -96,8 +105,6 @@ function createGraph
   echo ""
   echo -n "plot " >> ${GP_FILE}
   echo -n "'${datFile}' with lines linetype 1 linecolor rgb '${colors[${counter}]}'" >> ${graphFile}
-
-
 }
 
 #go through all the files in the directory
@@ -106,21 +113,35 @@ function createGraph
     a=($(wc ${f}))
     frames=${a[0]}
     counterb=0
-    while [ $counterb -lt $frames ];
+    min=$(sort ${f} | head -1)
+    max=$(sort -r ${f} | head -$counterb | tail -1)
+    mean=$(
+        cat ${f} |
+                awk '{sum+=$1}END{print (sum/NR)}'
+                )
+    standardDeviation=$(
+        cat ${f} |
+                awk '{sum+=$1; sumsq+=$1*$1}END{print sqrt(sumsq/NR - (sum/NR)**2)}'
+                )
+    while [ $counterb -le $frames ];
     do
-      echo $f  
+      #first line of output file is mean second is standard deviation
       datFile=${f}
       shortName=`basename ${f} .txt`
       echo $shortName
-      graphFile=${DIR}/graphs/$counterb$shortName.gnuplot
-      graphTitle=${counterb}brisque_$shortName
-      #graphFile=${DIR}/graphs/$shortName.gnuplot
-      #graphTitle=brisque_$shortName
-      createGraph $graphFile $graphTitle $datFile ${DIR}/graphs/$counterb$shortName.svg frame score $counterb
+      graphFile=${DIR}/graphs/$(printf %04d $counterb)$shortName.gnuplot
+      graphTitle=$(printf %04d $counterb)brisque_$shortName
+      echo $counterb
+      echo $min
+      echo $max
+      createGraph $graphFile $graphTitle $datFile \
+         ${DIR}/graphs/$(printf %04d $counterb)$shortName.svg \
+         frame score $counterb $min $max $mean $standardDeviation
       #createGraph $graphFile $graphTitle $datFile ${DIR}/graphs/$shortName.svg frame score
       echo "" >> ${graphFile}
       gnuplot ${graphFile}
-      convert ${DIR}/graphs/$counterb${shortName}.svg  ${DIR}/graphs/$counterb${shortName}.png
+      convert ${DIR}/graphs/$(printf %04d $counterb)${shortName}.svg \
+         ${DIR}/graphs/$(printf %04d $counterb)${shortName}.png
       let counterb=counterb+1
     done
   done
