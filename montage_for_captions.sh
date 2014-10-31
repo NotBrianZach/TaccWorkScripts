@@ -1,7 +1,5 @@
-#!/bin/sh
-#the montage line places top-layer.tif of 1440x1080 size on top of a 1920x1080 lower-layer.tif
-#with its upper left corner at XPOS, YPOS  and writes out outfile.tif.   I left a bit of the rest
-#of the script in case it's helpful.
+#!/bin/bash
+##the montage line places top-layer.tif of 1440x1080 size on top of a 1920x1080 lower-layer.tif
 
 get_leading_zero() {
    if [ $1 -lt 10 ]; then
@@ -14,25 +12,27 @@ get_leading_zero() {
       return_zero=""
    fi
    return $return_zero
+} 
+mon_files=(/home/zachabel/TaccWorkScripts/frames_ParkScene_832x480_dst_02.process/*.jpg)
+graph_files=(/home/zachabel/TaccWorkScripts/ok_video/graphs/*.png)
+
+createOverlay(){
+  cp $1 ./lowerLayer.jpg
+  cp $2 ./topLayer.png
+  convert lowerLayer.jpg lowerLayer.tif
+  convert topLayer.png topLayer.tif
+  
+  #to show script progress
+  echo $i 
+  #montage -geometry 1920x1080! lowerLayer.tif -draw 'image Over 1440,1080 topLayer.tif' -resize 1920x1080! $(printf %04d $i)outFile.tif
+
+  #image Over xpos,ypos,width,height, but gravity readjusts the position
+   convert lowerLayer.tif -gravity Northeast -draw "image Over 0,0,300,200 topLayer.tif" $(printf %04d $i)outFile.tif
 }
 
-filein=  etc
-fileout= etc
-framein= etc
-frameout= etc
-
-while [ $framein -le '  --- ' ]
-
+for ((i=0;i<=${#mon_files[@]};i++));
 do
-   get_leading_zero $framein
-   zero_in=$return_zero
-   get_leading_zero $frameout
-   zero_out=$return_zero
-
-   montage -geometry 1920x1080! lower-layer.tif -draw 'image Over XPOS,YPOS 1440,1080 top-layer.tif' -resize 1920x1080! outfile.tif
-
-   framein=`expr $framein + 1`
-   frameout=`expr $frameout + 1`
+    #${#mon_files[@]}
+  #echo "${graph_files[i]}"
+      createOverlay ${mon_files[i]} ${graph_files[i]}
 done
-
-exit
